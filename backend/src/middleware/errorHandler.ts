@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
 // Throw this from anywhere (controller/service) to send a specific
@@ -13,10 +14,20 @@ export class HttpError extends Error {
 }
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
-  if (err instanceof HttpError) {
-    res.status(err.status).json({ error: err.message });
-    return;
+  const statusCode = err instanceof HttpError ? err.status : 500;
+  const message = err instanceof HttpError ? err.message : 'Internal server error';
+
+  if (statusCode >= 500) {
+    logger.error({ err, path: req.path }, 'unhandled error');
   }
-  logger.error({ err, path: req.path }, 'unhandled error');
-  res.status(500).json({ error: 'Internal server error' });
+
+  res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message,
+    // Stack traces are a debugging aid, not something to leak in prod.
+    ...(env.nodeEnv === 'development' && err.stack ? { stack: err.stack } : {}),
+    timestamp: new Date().toISOString(),
+    path: req.originalUrl,
+  });
 }

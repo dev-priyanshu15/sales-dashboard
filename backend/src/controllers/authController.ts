@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { AuthService } from '../services/authService.js';
+import { sendSuccess } from '../utils/response.js';
 import { logger } from '../utils/logger.js';
 
 // Controllers only translate HTTP <-> service calls.
@@ -11,7 +12,7 @@ export function createAuthController(authService: AuthService) {
         const { email, password } = req.body ?? {};
         const result = await authService.signup(email, password);
         logger.info({ userId: result.user.id }, 'user signed up');
-        res.status(201).json(result);
+        sendSuccess(req, res, result, 201);
       } catch (err) {
         next(err);
       }
@@ -22,7 +23,7 @@ export function createAuthController(authService: AuthService) {
         const { email, password } = req.body ?? {};
         const result = await authService.login(email, password);
         logger.info({ userId: result.user.id }, 'user logged in');
-        res.json(result);
+        sendSuccess(req, res, result);
       } catch (err) {
         next(err);
       }

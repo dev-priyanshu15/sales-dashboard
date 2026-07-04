@@ -1,11 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
+import { sendSuccess } from '../utils/response.js';
 import type { ReportService } from '../services/reportService.js';
 
 export function createReportController(reportService: ReportService) {
   return {
     async get(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        res.json(await reportService.getReport(Number(req.params.id), req.user!.userId));
+        sendSuccess(req, res, await reportService.getReport(Number(req.params.id), req.user!.userId));
       } catch (err) {
         next(err);
       }
@@ -13,12 +14,17 @@ export function createReportController(reportService: ReportService) {
 
     async aggregate(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        res.json(await reportService.runAggregation(Number(req.params.id), req.user!.userId));
+        sendSuccess(
+          req,
+          res,
+          await reportService.runAggregation(Number(req.params.id), req.user!.userId)
+        );
       } catch (err) {
         next(err);
       }
     },
 
+    // File download — served raw, not enveloped (it's a CSV, not JSON).
     async exportCsv(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const csv = await reportService.exportCsv(Number(req.params.id), req.user!.userId);

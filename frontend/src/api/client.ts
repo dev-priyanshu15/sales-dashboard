@@ -12,6 +12,9 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+// The API wraps every JSON response in an envelope:
+//   { success, statusCode, data | message, timestamp, path }
+// This client unwraps it, so callers work with plain data.
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
   const token = getToken();
@@ -23,7 +26,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     let message = `Request failed (${res.status})`;
     try {
       const body = await res.json();
-      if (body.error) message = body.error;
+      if (body.message) message = body.message;
     } catch {
       /* non-JSON error body */
     }
@@ -31,7 +34,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   const contentType = res.headers.get('content-type') ?? '';
-  return (contentType.includes('application/json') ? res.json() : res.text()) as Promise<T>;
+  if (!contentType.includes('application/json')) return res.text() as Promise<T>;
+  const body = await res.json();
+  return body.data as T;
 }
 
 export const api = {

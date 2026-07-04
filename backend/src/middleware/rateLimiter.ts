@@ -1,4 +1,18 @@
 import rateLimit from 'express-rate-limit';
+import type { Request, Response } from 'express';
+
+// 429 responses use the same envelope as the error handler.
+function limitHandler(message: string) {
+  return (req: Request, res: Response): void => {
+    res.status(429).json({
+      success: false,
+      statusCode: 429,
+      message,
+      timestamp: new Date().toISOString(),
+      path: req.originalUrl,
+    });
+  };
+}
 
 // Uploads are the expensive endpoint — cap them per client.
 export const uploadRateLimiter = rateLimit({
@@ -6,7 +20,7 @@ export const uploadRateLimiter = rateLimit({
   limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many uploads, try again in a few minutes' },
+  handler: limitHandler('Too many uploads, try again in a few minutes'),
 });
 
 // Slow brute-force attempts on login/signup.
@@ -15,5 +29,5 @@ export const authRateLimiter = rateLimit({
   limit: 50,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many attempts, try again later' },
+  handler: limitHandler('Too many attempts, try again later'),
 });

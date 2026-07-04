@@ -1,0 +1,357 @@
+{
+  "info": {
+    "name": "Sales Analytics Pipeline API",
+    "description": "All backend endpoints. Every JSON response uses the envelope { success, statusCode, data | message, timestamp, path }.\n\nRun 'Auth > Login' (or Signup) first — the JWT is captured automatically into {{token}}. After 'Jobs > Upload CSV', {{jobId}} is captured automatically too.\n\nPrereqs: docker compose up -d, npm run migrate, npm run dev (backend).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "token", "value": "" },
+    { "key": "jobId", "value": "1" },
+    { "key": "email", "value": "postman@example.com" },
+    { "key": "password", "value": "password123" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope: success true', () => pm.expect(body.success).to.be.true);",
+                  "pm.test('db connected', () => pm.expect(body.data.db).to.eql('connected'));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// 201 on first run; 409 if the user already exists — both fine",
+                  "pm.test('201 created or 409 duplicate', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 201) {",
+                  "  pm.test('envelope: success true', () => pm.expect(body.success).to.be.true);",
+                  "  pm.test('token returned', () => pm.expect(body.data.token).to.be.a('string'));",
+                  "  pm.collectionVariables.set('token', body.data.token);",
+                  "} else {",
+                  "  pm.test('envelope: success false with message', () => {",
+                  "    pm.expect(body.success).to.be.false;",
+                  "    pm.expect(body.message).to.be.a('string');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/signup",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope: success true', () => pm.expect(body.success).to.be.true);",
+                  "pm.test('token returned', () => pm.expect(body.data.token).to.be.a('string'));",
+                  "pm.test('user object returned', () => pm.expect(body.data.user.email).to.be.a('string'));",
+                  "pm.collectionVariables.set('token', body.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login — wrong password (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope: success false, statusCode 401', () => {",
+                  "  pm.expect(body.success).to.be.false;",
+                  "  pm.expect(body.statusCode).to.eql(401);",
+                  "});",
+                  "pm.test('generic error (no user enumeration)', () => pm.expect(body.message).to.eql('Invalid email or password'));",
+                  "pm.test('has timestamp and path', () => {",
+                  "  pm.expect(body.timestamp).to.be.a('string');",
+                  "  pm.expect(body.path).to.eql('/api/auth/login');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"definitely-wrong\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Upload CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope: success true', () => pm.expect(body.success).to.be.true);",
+                  "pm.test('job created pending', () => pm.expect(body.data.status).to.eql('pending'));",
+                  "pm.test('rows counted', () => pm.expect(body.data.totalRows).to.be.above(0));",
+                  "pm.collectionVariables.set('jobId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/jobs/upload",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}" }] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select sample-data/sample.csv from the repo"
+                }
+              ]
+            },
+            "description": "Multipart upload. Click the 'file' row and select sample-data/sample.csv (or large-sample.csv). The created job id is auto-saved to {{jobId}}."
+          }
+        },
+        {
+          "name": "Trigger processing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 202 accepted', () => pm.response.to.have.status(202));",
+                  "pm.test('envelope: success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}/process",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}" }] }
+          }
+        },
+        {
+          "name": "List my jobs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope: success true', () => pm.expect(body.success).to.be.true);",
+                  "pm.test('data is an array', () => pm.expect(body.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/jobs",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}" }] }
+          }
+        },
+        {
+          "name": "Get job (status + progress)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const job = pm.response.json().data;",
+                  "pm.test('has progress counters', () => {",
+                  "  pm.expect(job).to.have.property('processedRows');",
+                  "  pm.expect(job).to.have.property('validRows');",
+                  "  pm.expect(job).to.have.property('invalidRows');",
+                  "  pm.expect(job).to.have.property('duplicateRows');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}" }] }
+          }
+        },
+        {
+          "name": "Get report (aggregate metrics)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 (409 if job not completed yet)', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "  const m = pm.response.json().data;",
+                  "  pm.test('all metric groups present', () => {",
+                  "    ['totalRevenue','averageOrderValue','medianOrderValue','orderValueStdDev','discountLoss',",
+                  "     'revenueByRegion','revenueByCategory','topTransactions','dailyTrend','monthlyTrend']",
+                  "      .forEach(k => pm.expect(m).to.have.property(k));",
+                  "  });",
+                  "  pm.test('top transactions max 5', () => pm.expect(m.topTransactions.length).to.be.at.most(5));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}/report",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}" }] }
+          }
+        },
+        {
+          "name": "Re-run aggregation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 (409 if job not completed yet)', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                  "pm.test('envelope shape', () => pm.expect(pm.response.json()).to.have.property('success'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}/aggregate",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}" }] }
+          }
+        },
+        {
+          "name": "Export annotated results CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 (409 if job not completed yet)', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('is CSV (raw file, not JSON envelope)', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv'));",
+                  "  pm.test('has annotation columns', () => pm.expect(pm.response.text()).to.include('validation_status'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}/export",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}" }] }
+          }
+        },
+        {
+          "name": "No token (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401 without token', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope: success false', () => pm.expect(body.success).to.be.false);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs" }
+        },
+        {
+          "name": "Unknown route (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope: success false with path', () => {",
+                  "  pm.expect(body.success).to.be.false;",
+                  "  pm.expect(body.path).to.eql('/api/does-not-exist');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/does-not-exist" }
+        }
+      ]
+    }
+  ]
+}

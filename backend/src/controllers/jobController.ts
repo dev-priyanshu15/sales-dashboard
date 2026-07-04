@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError } from '../middleware/errorHandler.js';
+import { sendSuccess } from '../utils/response.js';
 import type { JobService } from '../services/jobService.js';
 
 export function createJobController(jobService: JobService) {
@@ -12,7 +13,7 @@ export function createJobController(jobService: JobService) {
           req.file.originalname,
           req.file.buffer
         );
-        res.status(201).json(job);
+        sendSuccess(req, res, job, 201);
       } catch (err) {
         next(err);
       }
@@ -21,7 +22,7 @@ export function createJobController(jobService: JobService) {
     async process(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         await jobService.startProcessing(Number(req.params.id), req.user!.userId);
-        res.status(202).json({ message: 'Processing started' });
+        sendSuccess(req, res, { message: 'Processing started' }, 202);
       } catch (err) {
         next(err);
       }
@@ -29,7 +30,7 @@ export function createJobController(jobService: JobService) {
 
     async get(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        res.json(await jobService.getJob(Number(req.params.id), req.user!.userId));
+        sendSuccess(req, res, await jobService.getJob(Number(req.params.id), req.user!.userId));
       } catch (err) {
         next(err);
       }
@@ -37,7 +38,7 @@ export function createJobController(jobService: JobService) {
 
     async list(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        res.json(await jobService.listJobs(req.user!.userId));
+        sendSuccess(req, res, await jobService.listJobs(req.user!.userId));
       } catch (err) {
         next(err);
       }
