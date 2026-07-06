@@ -1,3 +1,4 @@
+// URL -> controller mapping for auth. Public routes — no requireAuth, the token is created here.
 import { Router } from 'express';
 import type { AuthController } from '../controllers/authController.js';
 

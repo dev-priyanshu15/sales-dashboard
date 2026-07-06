@@ -20,7 +20,7 @@ export function createJobRoutes(
 
   router.use(requireAuth); // every job route requires a logged-in user
 
-  router.post('/upload', uploadRateLimiter, upload.single('file'), controller.upload);
+  router.post('/upload', uploadRateLimiter, upload.single('file'), controller.upload);//4 cheez auth,ratelimit,multer,controller 1 req pe
   router.post('/:id/process', controller.process);
   router.get('/', controller.list);
   router.get('/:id', controller.get);

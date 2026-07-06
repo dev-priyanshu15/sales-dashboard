@@ -1,3 +1,4 @@
+// Auth context: calls the API for login/signup, keeps token+user in localStorage and React state.
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { api, getToken, setToken } from './api/client';
 import type { AuthUser } from './types';

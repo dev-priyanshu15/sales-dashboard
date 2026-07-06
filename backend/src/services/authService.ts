@@ -5,6 +5,7 @@ import { HttpError } from '../middleware/errorHandler.js';
 import type { UserRepository } from '../repositories/userRepository.js';
 import type { AuthTokenPayload } from '../types/index.js';
 
+// bcrypt cost 10 = 2^10 internal rounds per hash — slow enough to make brute-forcing stolen hashes impractical.
 const SALT_ROUNDS = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -16,6 +17,7 @@ export interface AuthResult {
 // Business rules for signup/login. Receives its repository as a
 // dependency (Dependency Inversion) so it can be tested with a fake.
 export function createAuthService({ userRepo }: { userRepo: UserRepository }) {
+  // Signs {userId, email, role} into a JWT — the server stores nothing, it verifies the signature per request.
   function issueToken(payload: AuthTokenPayload): string {
     return jwt.sign(payload, env.jwtSecret, {
       expiresIn: env.jwtExpiresIn,

@@ -18,6 +18,7 @@ export const jobQueue = new Queue(JOB_QUEUE_NAME, {
   },
 });
 
+// Only the jobId travels through Redis — the worker re-reads everything else from Postgres.
 export async function enqueueProcessing(jobId: number): Promise<void> {
   await jobQueue.add('process', { jobId });
 }

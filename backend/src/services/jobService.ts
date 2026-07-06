@@ -17,6 +17,7 @@ export function createJobService({ jobRepo, txnRepo, enqueue }: Deps) {
     // Upload = persist raw rows + create a pending job.
     // Processing does NOT start here — the user triggers it explicitly
     // (spec: "trigger processing manually after upload").
+    // Upload = parse -> header pre-check -> create pending job -> bulk-insert raw rows. No processing yet.
     async createFromUpload(userId: number, filename: string, buffer: Buffer): Promise<Job> {
       const rows = parseCsvBuffer(buffer);
       if (rows.length === 0) throw new HttpError(400, 'CSV contains no data rows');
@@ -40,6 +41,7 @@ export function createJobService({ jobRepo, txnRepo, enqueue }: Deps) {
       return job;
     },
 
+    // Ownership check -> push jobId to Redis -> return immediately; the worker process does the rest.
     async startProcessing(jobId: number, userId: number): Promise<void> {
       const job = await jobRepo.findByIdForUser(jobId, userId);
       if (!job) throw new HttpError(404, 'Job not found');

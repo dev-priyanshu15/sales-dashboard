@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Job } from '../types';
 
-// Upload a CSV + list of the user's jobs. The list polls every 2s
-// while any job is still pending/processing so statuses stay live.
+// Upload a CSV + list of the user's jobs. onUpload(): file -> api.upload() -> trigger /process.
+// The list polls every 2s while any job is still pending/processing so statuses stay live.
 export function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');

@@ -1,3 +1,4 @@
+// Login/signup form: onSubmit sends credentials via the auth context, navigates home on success.
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';

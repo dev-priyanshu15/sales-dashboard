@@ -1,5 +1,5 @@
-// The ONE place that talks HTTP: attaches the JWT, parses JSON,
-// throws a readable Error on non-2xx. Components never call fetch.
+// The ONE place that talks HTTP: attaches the JWT, unwraps the response
+// envelope, throws readable Errors. Components never call fetch directly.
 
 const TOKEN_KEY = 'sales_token';
 
