@@ -1,3 +1,4 @@
+// Report endpoints: get report, re-run aggregation, export annotated CSV. HTTP translation only.
 import type { NextFunction, Request, Response } from 'express';
 import { sendSuccess } from '../utils/response.js';
 import type { ReportService } from '../services/reportService.js';

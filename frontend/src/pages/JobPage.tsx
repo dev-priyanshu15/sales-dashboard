@@ -43,6 +43,7 @@ export function JobPage() {
     }
   }, [job?.status, hasValidRows, report, id]);
 
+  // "Re-run aggregation" button: recomputes metrics in SQL and stores a fresh report row.
   async function reaggregate() {
     setReaggregating(true);
     try {

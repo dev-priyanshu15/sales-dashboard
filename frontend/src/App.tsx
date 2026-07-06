@@ -4,6 +4,8 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { JobPage } from './pages/JobPage';
 
+// Route guard: no user -> redirect to /login. This is UX only — real security
+// is the user_id scoping in backend SQL; a faked frontend state gets 401s anyway.
 function Shell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
