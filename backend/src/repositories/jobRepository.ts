@@ -78,6 +78,29 @@ export const jobRepository = {
     );
   },
 
+  // System-wide observability numbers, surfaced on /health (spec bonus: job failure rate).
+  async systemMetrics(): Promise<{
+    totalJobs: number;
+    failedJobs: number;
+    jobFailureRate: number;
+    avgJobDurationMs: number | null;
+  }> {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE status = 'failed')::int AS failed,
+              AVG(EXTRACT(EPOCH FROM (finished_at - started_at)) * 1000)
+                FILTER (WHERE status = 'completed') AS avg_ms
+       FROM jobs`
+    );
+    const { total, failed, avg_ms } = rows[0];
+    return {
+      totalJobs: total,
+      failedJobs: failed,
+      jobFailureRate: total > 0 ? Math.round((failed / total) * 10000) / 10000 : 0,
+      avgJobDurationMs: avg_ms !== null ? Math.round(Number(avg_ms)) : null,
+    };
+  },
+
   async markFailed(jobId: number, errorMessage: string): Promise<void> {
     await pool.query(
       `UPDATE jobs SET status = 'failed', finished_at = now(), error_message = $2 WHERE id = $1`,

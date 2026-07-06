@@ -3,6 +3,7 @@ import { errorHandler, HttpError } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { authRateLimiter } from './middleware/rateLimiter.js';
 import { pool } from './config/db.js';
+import { jobRepository } from './repositories/jobRepository.js';
 import { buildContainer } from './container.js';
 import { createAuthRoutes } from './routes/authRoutes.js';
 import { createJobRoutes } from './routes/jobRoutes.js';
@@ -15,11 +16,12 @@ export function createApp(): express.Express {
   app.use(express.json());
   app.use(requestLogger);
 
-  // Liveness + DB connectivity check
+  // Liveness + DB connectivity + system metrics (job failure rate, avg duration)
   app.get('/health', async (req, res, next) => {
     try {
       await pool.query('SELECT 1');
-      sendSuccess(req, res, { status: 'ok', db: 'connected' });
+      const metrics = await jobRepository.systemMetrics();
+      sendSuccess(req, res, { status: 'ok', db: 'connected', metrics });
     } catch (err) {
       next(err);
     }

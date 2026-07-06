@@ -111,6 +111,8 @@ Tests cover the pure core: every validation rule (including the spec's four trap
 
 Structured JSON logging via pino (pretty-printed in dev): every request (method/path/status/duration/user), row-level validation warnings, job start/end with duration, and **`jobId` as a correlation ID** on every log line inside the pipeline (`logger.child({ jobId })`). Log levels: debug/info/warn/error.
 
+**Metrics:** each completed job logs `avgRowMs` (average per-row processing time), and `GET /health` exposes system-wide numbers — total jobs, **job failure rate**, and average job duration — computed in one SQL pass.
+
 ## Design decisions & tradeoffs
 
 - **BullMQ + Redis over an in-process pool** — real background jobs, retries, and restart survival for one docker-compose service. Tradeoff: an extra moving part and a separate worker process to run.

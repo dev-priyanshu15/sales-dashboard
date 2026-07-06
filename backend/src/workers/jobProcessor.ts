@@ -87,8 +87,15 @@ export async function processJob(jobId: number): Promise<void> {
     await reportRepository.saveReport(jobId, metrics);
     log.info('aggregate report stored');
 
+    // Metrics: total duration + average per-row cost (spec bonus).
+    const durationMs = Date.now() - startedAt;
+    const totalRows = counts.valid + counts.invalid + counts.duplicate;
     log.info(
-      { durationMs: Date.now() - startedAt, ...counts },
+      {
+        durationMs,
+        avgRowMs: totalRows > 0 ? Math.round((durationMs / totalRows) * 100) / 100 : null,
+        ...counts,
+      },
       'job completed'
     );
   } catch (err) {
